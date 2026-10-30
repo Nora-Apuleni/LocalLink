@@ -51,7 +51,14 @@ body {
     margin: 0;
     min-height: 100vh;
 
-    background: var(--background);
+    background-color: var(--background);
+    background-image:
+        linear-gradient(rgba(244, 247, 246, 0.7), rgba(244, 247, 246, 0.7)),
+        url("../images/login-warehouse.jpg");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--text);
 
     font-family: Arial, Helvetica, sans-serif;
@@ -328,6 +335,10 @@ p {
     gap: 20px;
 
     margin: 28px 0;
+}
+
+.payment-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .stat-card {
@@ -681,6 +692,59 @@ form button {
     padding: 24px;
 }
 
+.warehouse-card-image {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    margin-bottom: 18px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: #e8efeb;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.warehouse-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.warehouse-image-thumb {
+    display: block;
+    width: 112px;
+    height: 68px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+}
+
+.warehouse-image-form {
+    min-width: 190px;
+}
+
+.warehouse-image-form input[type="file"] {
+    padding: 7px;
+    font-size: 12px;
+}
+
+.warehouse-image-form button {
+    margin-top: 6px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .warehouse-card:hover {
     border-color: #cbded5;
     box-shadow: var(--shadow-md);
@@ -954,6 +1018,7 @@ td {
 }
 
 .auth-container {
+    flex: 1;
     min-height: 80vh;
 
     display: flex;
@@ -961,6 +1026,12 @@ td {
     justify-content: center;
 
     padding: 35px 18px;
+}
+
+.auth-container-login {
+    background:
+        linear-gradient(rgba(18, 38, 34, 0.3), rgba(18, 38, 34, 0.3)),
+        url("../images/login-warehouse.jpg") center / cover no-repeat;
 }
 
 .auth-card {
@@ -1049,6 +1120,10 @@ td {
 }
 
 @media (max-width: 700px) {
+    body {
+        background-attachment: scroll;
+    }
+
     .topbar {
         min-height: 65px;
         padding: 12px 15px;

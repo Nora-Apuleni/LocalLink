@@ -34,6 +34,71 @@ function e($value)
     );
 }
 
+function storeWarehouseImage($upload)
+{
+    $uploadError = $upload['error'] ?? UPLOAD_ERR_NO_FILE;
+
+    if ($uploadError === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+
+    if ($uploadError !== UPLOAD_ERR_OK || (int) ($upload['size'] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException('Choose an image smaller than 5 MB and try again.');
+    }
+
+    $temporaryPath = $upload['tmp_name'] ?? '';
+    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = $fileInfo->file($temporaryPath);
+    $extensions = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+    $imageInfo = @getimagesize($temporaryPath);
+
+    if (
+        !isset($extensions[$mimeType]) ||
+        $imageInfo === false ||
+        ($imageInfo['mime'] ?? '') !== $mimeType
+    ) {
+        throw new RuntimeException('Use a valid JPG, PNG, or WebP image.');
+    }
+
+    $uploadDirectory = __DIR__ . '/../assets/uploads/warehouses';
+
+    if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
+        throw new RuntimeException('Photo storage is unavailable. Please try again later.');
+    }
+
+    $fileName = bin2hex(random_bytes(16)) . '.' . $extensions[$mimeType];
+    $destination = $uploadDirectory . '/' . $fileName;
+
+    if (!move_uploaded_file($temporaryPath, $destination)) {
+        throw new RuntimeException('The photo could not be saved. Please try again.');
+    }
+
+    return 'assets/uploads/warehouses/' . $fileName;
+}
+
+function deleteWarehouseImage($imagePath)
+{
+    if (!is_string($imagePath) || strpos($imagePath, 'assets/uploads/warehouses/') !== 0) {
+        return;
+    }
+
+    $uploadDirectory = realpath(__DIR__ . '/../assets/uploads/warehouses');
+    $filePath = realpath(__DIR__ . '/../' . $imagePath);
+
+    if (
+        $uploadDirectory !== false &&
+        $filePath !== false &&
+        strpos($filePath, $uploadDirectory . DIRECTORY_SEPARATOR) === 0 &&
+        is_file($filePath)
+    ) {
+        unlink($filePath);
+    }
+}
+
 function redirect($url)
 {
     header("Location: $url");

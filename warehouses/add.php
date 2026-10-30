@@ -27,11 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ) {
             $error = 'Please enter valid warehouse details, pricing, and unit capacity.';
         } else {
+            $imagePath = null;
+
             try {
+                $imagePath = storeWarehouseImage($_FILES['image'] ?? []);
                 $stmt = $pdo->prepare(
                     "INSERT INTO warehouses 
-                    (user_id, name, location, description, price_per_unit, total_units, available_units, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')"
+                    (user_id, name, location, description, image_path, price_per_unit, total_units, available_units, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
                 );
                 
                 $stmt->execute([
@@ -39,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $name,
                     $location,
                     $description !== '' ? $description : null,
+                    $imagePath,
                     $pricePerUnit,
                     $totalUnits,
                     $totalUnits // Sets initial available units equal to total capacity
@@ -46,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $success = 'Warehouse submitted successfully and is pending administrator approval.';
             } catch (Throwable $e) {
+                deleteWarehouseImage($imagePath);
                 $error = 'Unable to add warehouse. Please try again.';
                 error_log($e->getMessage());
             }
@@ -75,7 +80,7 @@ include '../includes/sidebar.php';
     <section class="panel">
         <h2>Warehouse Details</h2>
 
-        <form method="POST" class="form-grid">
+        <form method="POST" class="form-grid" enctype="multipart/form-data">
 
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="hidden" name="action" value="add_warehouse">
@@ -103,6 +108,13 @@ include '../includes/sidebar.php';
             <div>
                 <label>Description / Facilities</label>
                 <textarea name="description" placeholder="Describe security features, accessibility, or amenities..."></textarea>
+            </div>
+
+            <div>
+                <label for="warehouse-image">Warehouse Photo</label>
+                <input id="warehouse-image" type="file" name="image"
+                       accept="image/jpeg,image/png,image/webp">
+                <small class="muted">Optional. JPG, PNG, or WebP, up to 5 MB.</small>
             </div>
 
             <div>

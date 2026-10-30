@@ -102,7 +102,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT b.*, COALESCE(NULLIF(b.total_price, 0), b.total_cost, 0) AS total_amount, w.name AS warehouse_name
+    "SELECT b.*,
+            COALESCE(NULLIF(b.total_price, 0), b.total_cost, 0) AS total_amount,
+            w.name AS warehouse_name,
+            EXISTS (
+                SELECT 1 FROM payments p
+                WHERE p.booking_id = b.id
+                AND p.user_id = b.user_id
+                AND p.status = 'successful'
+            ) AS is_paid
      FROM warehouse_bookings b
      JOIN warehouses w ON w.id = b.warehouse_id
      WHERE b.user_id = ?
@@ -112,6 +120,15 @@ $stmt = $pdo->prepare(
 
 $stmt->execute([$userId]);
 $bookings = $stmt->fetchAll();
+$amountDue = 0.0;
+$unpaidCount = 0;
+
+foreach ($bookings as $booking) {
+    if (!(int) $booking['is_paid']) {
+        $amountDue += (float) $booking['total_amount'];
+        $unpaidCount++;
+    }
+}
 
 $stmt = $pdo->prepare(
     "SELECT * FROM payments
@@ -130,10 +147,15 @@ include '../includes/sidebar.php';
 
 <main class="main-content">
 
-    <h1>Payments</h1>
+    <div class="page-heading">
+        <div>
+            <h1>Payments</h1>
+            <p>Review booking balances and your recent payment activity.</p>
+        </div>
+    </div>
 
     <div class="alert warning">
-        Demonstration mode: no real money is transferred.
+        Demo mode: payments are simulated; no money will be transferred.
     </div>
 
     <?php if ($error): ?>
@@ -144,9 +166,21 @@ include '../includes/sidebar.php';
         <div class="alert success"><?= e($success) ?></div>
     <?php endif; ?>
 
+    <div class="stats-grid payment-summary">
+        <article class="stat-card stat-warning">
+            <p>Amount due</p>
+            <h2><?= money($amountDue) ?></h2>
+        </article>
+
+        <article class="stat-card stat-primary">
+            <p>Bookings awaiting payment</p>
+            <h2><?= $unpaidCount ?></h2>
+        </article>
+    </div>
+
     <section class="panel">
 
-        <h2>Outstanding Bookings</h2>
+        <h2>Your Bookings</h2>
 
         <div class="table-wrapper">
             <table>
@@ -164,23 +198,7 @@ include '../includes/sidebar.php';
                 <tbody>
 
                     <?php foreach ($bookings as $booking): ?>
-
-                        <?php
-                        $stmt = $pdo->prepare(
-                            "SELECT COUNT(*)
-                             FROM payments
-                             WHERE booking_id = ?
-                             AND user_id = ?
-                             AND status = 'successful'"
-                        );
-
-                        $stmt->execute([
-                            $booking['id'],
-                            $userId
-                        ]);
-
-                        $isPaid = (int) $stmt->fetchColumn() > 0;
-                        ?>
+                        <?php $isPaid = (int) $booking['is_paid'] > 0; ?>
 
                         <tr>
 
@@ -191,7 +209,9 @@ include '../includes/sidebar.php';
                             <td><?= money($booking['total_amount']) ?></td>
 
                             <td>
-                                <?= $isPaid ? 'Paid' : 'Unpaid' ?>
+                                <span class="status <?= $isPaid ? 'success' : 'warning' ?>">
+                                    <?= $isPaid ? 'Paid' : 'Payment due' ?>
+                                </span>
                             </td>
 
                             <td>
@@ -231,7 +251,7 @@ include '../includes/sidebar.php';
                     <?php if (!$bookings): ?>
                         <tr>
                             <td colspan="5">
-                                No bookings available for payment.
+                                No active bookings yet.
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -275,7 +295,7 @@ include '../includes/sidebar.php';
 
                             <td><?= renderStatusBadge($payment['status']) ?></td>
 
-                            <td><?= e($payment['created_at']) ?></td>
+                            <td><?= e(date('M j, Y, g:i a', strtotime($payment['created_at']))) ?></td>
                         </tr>
 
                     <?php endforeach; ?>

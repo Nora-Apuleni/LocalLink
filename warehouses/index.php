@@ -192,7 +192,7 @@ include '../includes/sidebar.php';
 
 <main class="main-content">
 
-    <h1>Warehouse Marketplace</h1>
+    <h1>Warehouse Catalogue</h1>
 
     <p>
         Find storage space that suits your business.
@@ -208,7 +208,7 @@ include '../includes/sidebar.php';
     <?php endif; ?>
 
     <section class="panel">
-        <h2>Find Recommended Warehouses</h2>
+        <h2>Filter Warehouses</h2>
 
         <form method="GET" class="filter-form">
             <div>
@@ -234,6 +234,16 @@ include '../includes/sidebar.php';
         <?php foreach ($warehouses as $warehouse): ?>
 
             <article class="warehouse-card">
+
+                <div class="warehouse-card-image">
+                    <?php if (!empty($warehouse['image_path'])): ?>
+                        <img src="../<?= e($warehouse['image_path']) ?>"
+                             alt="<?= e($warehouse['name']) ?> warehouse"
+                             loading="lazy">
+                    <?php else: ?>
+                        <span>Photo not available</span>
+                    <?php endif; ?>
+                </div>
 
                 <div class="warehouse-card-top">
                     <span class="badge">

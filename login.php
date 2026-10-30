@@ -46,7 +46,7 @@ $pageTitle = 'Login';
 include 'includes/header.php';
 ?>
 
-<div class="auth-container">
+<div class="auth-container auth-container-login">
     <div class="auth-card">
         <h1>Welcome back</h1>
         <p>Log in to your LocalLink account.</p>

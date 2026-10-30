@@ -12,8 +12,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     verifyCsrf();
     $action = $_POST['action'];
 
-    // Handle Booking Confirm / Reject Actions
-    if (in_array($action, ['confirm', 'reject'], true)) {
+    if ($action === 'update_image') {
+        $warehouseId = sanitizePositiveInt($_POST['warehouse_id'] ?? null);
+        $newImagePath = null;
+
+        if ($warehouseId === null) {
+            $error = 'Select a valid warehouse.';
+        } else {
+            $warehouseSql = 'SELECT id, image_path FROM warehouses WHERE id = ?';
+            $warehouseParams = [$warehouseId];
+
+            if ($role !== 'admin') {
+                $warehouseSql .= ' AND user_id = ?';
+                $warehouseParams[] = $userId;
+            }
+
+            $warehouseStmt = $pdo->prepare($warehouseSql);
+            $warehouseStmt->execute($warehouseParams);
+            $warehouse = $warehouseStmt->fetch();
+
+            if (!$warehouse) {
+                $error = 'Warehouse not found or you do not have permission to update it.';
+            } else {
+                try {
+                    $newImagePath = storeWarehouseImage($_FILES['image'] ?? []);
+
+                    if ($newImagePath === null) {
+                        throw new RuntimeException('Choose a photo before saving.');
+                    }
+
+                    $updateStmt = $pdo->prepare('UPDATE warehouses SET image_path = ? WHERE id = ?');
+                    $updateStmt->execute([$newImagePath, $warehouseId]);
+                    deleteWarehouseImage($warehouse['image_path']);
+                    $message = 'Warehouse photo updated.';
+                } catch (Throwable $e) {
+                    deleteWarehouseImage($newImagePath);
+                    $error = $e instanceof RuntimeException
+                        ? $e->getMessage()
+                        : 'Unable to update the warehouse photo. Please try again.';
+
+                    if (!($e instanceof RuntimeException)) {
+                        error_log($e->getMessage());
+                    }
+                }
+            }
+        }
+    } elseif (in_array($action, ['confirm', 'reject'], true)) {
+        // Handle Booking Confirm / Reject Actions
         $bookingId = (int)($_POST['booking_id'] ?? 0);
         $newStatus = ($action === 'confirm') ? 'confirmed' : 'rejected';
 
@@ -108,6 +153,7 @@ include '../includes/sidebar.php';
                         <th>Total Capacity</th>
                         <th>Available Capacity</th>
                         <th>Rate / Unit</th>
+                        <th>Photo</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -117,10 +163,32 @@ include '../includes/sidebar.php';
                             <td><?= e($wh['total_units'] ?? $wh['capacity'] ?? 100) ?> units</td>
                             <td><?= e($wh['available_units'] ?? 50) ?> units</td>
                             <td><?= money($wh['price_per_unit'] ?? $wh['price'] ?? 0) ?></td>
+                            <td>
+                                <?php if (!empty($wh['image_path'])): ?>
+                                    <img class="warehouse-image-thumb"
+                                         src="../<?= e($wh['image_path']) ?>"
+                                         alt="<?= e($wh['name']) ?>">
+                                <?php else: ?>
+                                    <span class="muted">No photo</span>
+                                <?php endif; ?>
+
+                                <form method="POST" enctype="multipart/form-data" class="warehouse-image-form">
+                                    <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                                    <input type="hidden" name="action" value="update_image">
+                                    <input type="hidden" name="warehouse_id" value="<?= (int) $wh['id'] ?>">
+                                    <label class="visually-hidden" for="warehouse-image-<?= (int) $wh['id'] ?>">
+                                        Photo for <?= e($wh['name']) ?>
+                                    </label>
+                                    <input id="warehouse-image-<?= (int) $wh['id'] ?>"
+                                           type="file" name="image"
+                                           accept="image/jpeg,image/png,image/webp" required>
+                                    <button class="btn small secondary">Save photo</button>
+                                </form>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($myWarehouses)): ?>
-                        <tr><td colspan="4">No registered warehouses found.</td></tr>
+                        <tr><td colspan="5">No registered warehouses found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
